@@ -64,13 +64,10 @@ function setupConversionTracking() {
         }
         
         // Visual feedback for the button
-        const originalContent = this.innerHTML;
-        this.style.background = '#057642';
-        this.innerHTML = '<svg class="icon" viewBox="0 0 20 20"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Event Sent!';
+        this.style.background = 'rgba(5, 118, 66, 0.1)';
         
         setTimeout(() => {
             this.style.background = '';
-            this.innerHTML = originalContent;
         }, 2000);
     });
 }

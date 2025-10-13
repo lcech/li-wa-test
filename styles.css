@@ -303,11 +303,6 @@ input[type="text"]:focus {
     color: var(--error-red);
 }
 
-.status-alert {
-    background: rgba(225, 103, 69, 0.1);
-    color: var(--error-red);
-}
-
 .status-neutral {
     background: rgba(178, 178, 178, 0.1);
     color: var(--neutral-gray);
