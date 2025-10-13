@@ -293,6 +293,16 @@ input[type="text"]:focus {
     color: var(--warning-orange);
 }
 
+.status-neutral {
+    background: rgba(102, 102, 102, 0.1);
+    color: var(--neutral-gray);
+}
+
+.status-alert {
+    background: rgba(204, 16, 22, 0.1);
+    color: var(--error-red);
+}
+
 .status-alert {
     background: rgba(225, 103, 69, 0.1);
     color: var(--error-red);
