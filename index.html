@@ -4,35 +4,185 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>LinkedIn Insights Test Page</title>
+    <title>LinkedIn Website Actions Tester</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-    <h1>LinkedIn Insights Test Page</h1>
+    <!-- Header Navbar -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">
+                <div>
+                    <h1 class="navbar-title">LinkedIn Website Actions Tester</h1>
+                    <p class="navbar-subtitle">Test and validate LinkedIn Website Actions tracking implementation</p>
+                </div>
+            </div>
+        </div>
+    </nav>
 
-    <!-- Form to input PID (shown when no pid parameter is present) -->
-    <div id="pid-form" style="display: none;">
-        <p>Please enter your LinkedIn Partner ID (PID) to proceed:</p>
-        <form id="pid-input-form" method="get">
-            <input type="text" name="pid" placeholder="LinkedIn Partner ID" required />
-            <button type="submit">Load LinkedIn Insights</button>
-        </form>
+    <!-- Setup Form (shown when no pid parameter is present) -->
+    <div id="pid-form" class="setup-container hidden">
+        <div class="setup-card">
+            <h2>📋 Setup Required</h2>
+            <p>To begin testing LinkedIn Website Actions, please enter your Partner ID:</p>
+            
+            <form id="pid-input-form" method="get">
+                <div class="form-group">
+                    <label for="pid-input">LinkedIn Partner ID</label>
+                    <input type="text" id="pid-input" name="pid" placeholder="Enter your Partner ID (e.g., 12345)" required />
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    ✅ Initialize Testing
+                </button>
+            </form>
+        </div>
     </div>
 
-    <!-- Main content (shown when pid parameter is present) -->
-    <div id="main-content" style="display: none;">
-        <p>LinkedIn Partner ID: <span id="current-pid"></span></p>
-        
-        <form action="javascript:void(0);" method="get">
-            <input type="text" name="identifier" placeholder="Value" />
-            <button type="submit">Submit</button>
-        </form>
+    <!-- Main Dashboard Layout (shown when pid parameter is present) -->
+    <div id="main-content" class="main-layout hidden">
+        <!-- Left Sidebar -->
+        <div class="sidebar">
+            <!-- Status Panel -->
+            <div class="sidebar-panel">
+                <h3>🔗 Connection Status</h3>
+                <div class="info-row">
+                    <span class="info-label">Partner ID</span>
+                    <span class="status-badge status-connected" id="current-pid">Connected</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">LinkedIn Insights Tag</span>
+                    <span class="status-badge status-connected">Loaded</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Website Actions</span>
+                    <span class="status-badge status-neutral" id="website-actions">Testing</span>
+                </div>
+                
+                <!-- Test Controls -->
+                <div class="control-section">
+                    <h3>Additional Tests</h3>
+                    <form action="javascript:void(0);" method="get">
+                        <div class="form-group">
+                            <input type="text" id="test-identifier" name="identifier" placeholder="Optional Value" />
+                            <button type="submit" class="btn btn-primary" id="conversion-button">
+                                📥 Simulate a Form Submit
+                            </button>
+                        </div>
+                    </form>
 
-        <a id="conversion-link" href="javascript:void(0);">Test Text</a>
+                    <div class="form-group">
+                        <a id="conversion-link" href="javascript:void(0);">👉🏻 Simulate a Link Click</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Requests List Panel -->
+            <div class="requests-list">
+                <h3>📋 Captured Requests</h3>
+                <div id="requests-container">
+                    <div class="empty-state">
+                        No requests captured yet. Trigger a conversion event to see requests here.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Panel -->
+        <div class="main-content">
+            <div class="main-panel">
+                <div class="main-panel-header">
+                    <h3 class="main-panel-title">📊 Request Data</h3>
+                    <span class="output-status" id="output-status">Ready</span>
+                </div>
+                <pre class="code-output" id="output">
+                    Select a request from the sidebar to view its decoded content here.
+                </pre>
+            </div>
+        </div>
     </div>
 
     <script type="text/javascript">
+        // Global state
+        let requestCount = 0;
+        let capturedRequests = [];
+        let activeRequestIndex = -1;
+        
+        // Optional: For fast lookups by ID if needed
+        let requestsById = new Map();
+
+        // Utility functions
+        function showElement(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+        
+        function hideElement(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+        
+        function updateOutputStatus(message) {
+            document.getElementById('output-status').textContent = message;
+        }
+
+        function clearOutput() {
+            capturedRequests = [];
+            requestCount = 0;
+            activeRequestIndex = -1;
+            requestsById.clear(); // Clear the map as well
+            
+            document.getElementById('output').textContent = 'Select a request from the sidebar to view its decoded content here.';
+            updateOutputStatus('Ready');
+            
+            const container = document.getElementById('requests-container');
+            container.innerHTML = '<div class="empty-state">No requests captured yet. Trigger a conversion event to see requests here.</div>';
+        }
+
+        function addRequestToSidebar(requestData, timestamp) {
+            const container = document.getElementById('requests-container');
+            
+            // Clear placeholder if this is the first request
+            if (requestCount === 1) {
+                container.innerHTML = '';
+            }
+            
+            const requestItem = document.createElement('div');
+            requestItem.className = 'request-item';
+            requestItem.dataset.id = requestCount;
+            requestItem.innerHTML = `
+                <div class="request-timestamp">${timestamp}</div>
+                <div class="request-id">Request #${requestCount}</div>
+            `;
+            requestItem.addEventListener("click", function (e) {
+                // Select this request when clicked
+                selectRequest(e.target.closest('.request-item').dataset.id);
+            });
+            
+            container.appendChild(requestItem);
+            
+            // Auto-select the newest request
+            selectRequest(requestCount);
+        }
+
+        function selectRequest(index) {
+            if (index >= 0 && index <= capturedRequests.length) {
+                // Update active state
+                document.querySelectorAll('.request-item').forEach((item, i) => {
+                    item.classList.toggle('active', i === index);
+                });
+                
+                activeRequestIndex = index;
+                const request = capturedRequests[index - 1];
+                
+                // Display the request data
+                document.getElementById('output').textContent = request.formatted;
+                updateOutputStatus(`Showing Request #${request.id} from ${request.timestamp}`);
+            }
+        }
+
         // Check for PID parameter and show appropriate content
         (function() {
             const params = new URLSearchParams(window.location.search);
@@ -40,7 +190,7 @@
             
             if (partner_id) {
                 // PID is present - show main content and initialize LinkedIn tracking
-                document.getElementById("main-content").style.display = "block";
+                showElement("main-content");
                 document.getElementById("current-pid").textContent = partner_id;
                 
                 // Initialize LinkedIn tracking
@@ -59,24 +209,46 @@
                     b.type = "text/javascript"; b.async = true;
                     b.src = "https://snap.licdn.com/li.lms-analytics/insight.min.js";
                     s.parentNode.insertBefore(b, s);
+                    setTimeout(function () {
+                        if (capturedRequests && capturedRequests.length !== 0) {
+                            return;
+                        } else {
+                            var indicator = document.getElementById("website-actions");
+                            indicator.textContent = 'Disabled';
+                            indicator.classList.remove('status-neutral');
+                            indicator.classList.add('status-connected');
+                        }
+                    }, 500);
                 })(window.lintrk);
                 
                 // Set up conversion tracking
                 var conversionLink = document.getElementById("conversion-link");
                 if (conversionLink) {
                     conversionLink.addEventListener("click", function () {
-                        window.lintrk('track', { conversion_id: 19349169 });
+                        const identifier = document.getElementById("test-identifier").value.trim();
+                        const trackingData = { conversion_id: 19349169 };
+                        if (identifier) {
+                            trackingData.custom_identifier = identifier;
+                        }
+                        window.lintrk('track', trackingData);
                     });
                 }
+                
+                updateOutputStatus('LinkedIn Insights Tag loaded successfully');
             } else {
                 // No PID - show form to input PID
-                document.getElementById("pid-form").style.display = "block";
+                showElement("pid-form");
                 
                 // Handle form submission
                 document.getElementById("pid-input-form").addEventListener("submit", function(e) {
                     e.preventDefault();
                     const pidInput = this.querySelector('input[name="pid"]').value.trim();
                     if (pidInput) {
+                        // Add loading state
+                        const submitBtn = this.querySelector('button[type="submit"]');
+                        submitBtn.innerHTML = '<svg class="icon" viewBox="0 0 20 20"><path d="M4 2v20l16-10z"/></svg>Loading...';
+                        submitBtn.disabled = true;
+                        
                         // Redirect to current page with PID parameter
                         const currentUrl = new URL(window.location);
                         currentUrl.searchParams.set('pid', pidInput);
@@ -87,37 +259,87 @@
         })();
     </script>
 
-    <div id="output-container" style="margin-top: 20px;">
-        <p>Latest Website Actions Request Content:</p>
-        <pre id="output"></pre>
-    </div>
-
     <script type="text/javascript">
         function decodeAndFormat(encodedStr) {
-            // Step 1: Base64 decode to binary string
-            const binaryString = atob(encodedStr);
+            try {
+                // Step 1: Base64 decode to binary string
+                const binaryString = atob(encodedStr);
 
-            // Step 2: Convert binary string to Uint8Array
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
+                // Step 2: Convert binary string to Uint8Array
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+
+                // Step 3: Decompress using pako
+                const decompressed = pako.ungzip(bytes, { to: 'string' });
+
+                // Step 4: Parse and format JSON
+                const json = JSON.parse(decompressed);
+                const formatted = JSON.stringify(json, null, 2);
+
+                // Store request data
+                const timestamp = new Date().toLocaleTimeString();
+                requestCount++;
+                
+                const requestData = {
+                    id: requestCount,
+                    timestamp: timestamp,
+                    formatted: formatted,
+                    raw: json
+                };
+                
+                capturedRequests.push(requestData);
+                
+                // Optional: Store in map for fast ID-based lookup
+                requestsById.set(requestData.id, requestData);
+                
+                // Add to sidebar and auto-select
+                addRequestToSidebar(requestData, timestamp);
+
+                var indicator = document.getElementById("website-actions");
+                indicator.textContent = 'Enabled';
+                indicator.classList.remove('status-neutral');
+                indicator.classList.add('status-alert');
+                
+                updateOutputStatus(`Captured Request #${requestCount} at ${timestamp}`);
+                
+            } catch (error) {
+                console.error('Error decoding LinkedIn data:', error);
+                
+                const timestamp = new Date().toLocaleTimeString();
+                requestCount++;
+                
+                const errorData = {
+                    id: requestCount,
+                    timestamp: timestamp,
+                    formatted: `Error decoding data: ${error.message}\n\nRaw data: ${encodedStr}`,
+                    raw: { error: error.message, rawData: encodedStr }
+                };
+                
+                capturedRequests.push(errorData);
+                
+                // Optional: Store in map for fast ID-based lookup
+                requestsById.set(errorData.id, errorData);
+                
+                addRequestToSidebar(errorData, timestamp);
+                
+                updateOutputStatus('Error decoding request data');
             }
-
-            // Step 3: Decompress using pako
-            const decompressed = pako.ungzip(bytes, { to: 'string' });
-
-            // Step 4: Parse and format JSON
-            const json = JSON.parse(decompressed);
-            const formatted = JSON.stringify(json, null, 4);
-
-            // Display result
-            document.getElementById('output').textContent = formatted;
         }
+        
+        // Intercept fetch requests to LinkedIn
         const originalFetch = window.fetch;
         window.fetch = async function (...args) {
             if (args[0].includes('https://px.ads.linkedin.com/wa')) {
-                decodeAndFormat(args[1].body);
+                updateOutputStatus('Intercepting LinkedIn request...');
+                if (args[1] && args[1].body) {
+                    decodeAndFormat(args[1].body);
+                } else {
+                    document.getElementById('output').textContent = 'LinkedIn request intercepted but no body found.';
+                    updateOutputStatus('Request intercepted (no body)');
+                }
             }
             console.log("Intercepted fetch:", args);
             const response = await originalFetch(...args);
