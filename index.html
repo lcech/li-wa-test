@@ -5,11 +5,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>LinkedIn Website Actions Tester</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- Preload critical JavaScript dependencies -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js" as="script">
+    <link rel="preload" href="ui.js" as="script">
+    <link rel="preload" href="decoder.js" as="script">
+    <link rel="preload" href="app.js" as="script">
 </head>
 
 <body>
@@ -106,246 +111,11 @@
         </div>
     </div>
 
-    <script type="text/javascript">
-        // Global state
-        let requestCount = 0;
-        let capturedRequests = [];
-        let activeRequestIndex = -1;
-        
-        // Optional: For fast lookups by ID if needed
-        let requestsById = new Map();
-
-        // Utility functions
-        function showElement(id) {
-            document.getElementById(id).classList.remove('hidden');
-        }
-        
-        function hideElement(id) {
-            document.getElementById(id).classList.add('hidden');
-        }
-        
-        function updateOutputStatus(message) {
-            document.getElementById('output-status').textContent = message;
-        }
-
-        function clearOutput() {
-            capturedRequests = [];
-            requestCount = 0;
-            activeRequestIndex = -1;
-            requestsById.clear(); // Clear the map as well
-            
-            document.getElementById('output').textContent = 'Select a request from the sidebar to view its decoded content here.';
-            updateOutputStatus('Ready');
-            
-            const container = document.getElementById('requests-container');
-            container.innerHTML = '<div class="empty-state">No requests captured yet. Trigger a conversion event to see requests here.</div>';
-        }
-
-        function addRequestToSidebar(requestData, timestamp) {
-            const container = document.getElementById('requests-container');
-            
-            // Clear placeholder if this is the first request
-            if (requestCount === 1) {
-                container.innerHTML = '';
-            }
-            
-            const requestItem = document.createElement('div');
-            requestItem.className = 'request-item';
-            requestItem.dataset.id = requestCount;
-            requestItem.innerHTML = `
-                <div class="request-timestamp">${timestamp}</div>
-                <div class="request-id">Request #${requestCount}</div>
-            `;
-            requestItem.addEventListener("click", function (e) {
-                // Select this request when clicked
-                selectRequest(e.target.closest('.request-item').dataset.id);
-            });
-            
-            container.appendChild(requestItem);
-            
-            // Auto-select the newest request
-            selectRequest(requestCount);
-        }
-
-        function selectRequest(index) {
-            if (index >= 0 && index <= capturedRequests.length) {
-                // Update active state
-                document.querySelectorAll('.request-item').forEach((item, i) => {
-                    item.classList.toggle('active', i === index);
-                });
-                
-                activeRequestIndex = index;
-                const request = capturedRequests[index - 1];
-                
-                // Display the request data
-                document.getElementById('output').textContent = request.formatted;
-                updateOutputStatus(`Showing Request #${request.id} from ${request.timestamp}`);
-            }
-        }
-
-        // Check for PID parameter and show appropriate content
-        (function() {
-            const params = new URLSearchParams(window.location.search);
-            const partner_id = params.get("pid");
-            
-            if (partner_id) {
-                // PID is present - show main content and initialize LinkedIn tracking
-                showElement("main-content");
-                document.getElementById("current-pid").textContent = partner_id;
-                
-                // Initialize LinkedIn tracking
-                _linkedin_partner_id = partner_id;
-                window._linkedin_data_partner_ids = window._linkedin_data_partner_ids || [];
-                window._linkedin_data_partner_ids.push(_linkedin_partner_id);
-                
-                // Load LinkedIn Insights Tag
-                (function (l) {
-                    if (!l) {
-                        window.lintrk = function (a, b) { window.lintrk.q.push([a, b]) };
-                        window.lintrk.q = []
-                    }
-                    var s = document.getElementsByTagName("script")[0];
-                    var b = document.createElement("script");
-                    b.type = "text/javascript"; b.async = true;
-                    b.src = "https://snap.licdn.com/li.lms-analytics/insight.min.js";
-                    s.parentNode.insertBefore(b, s);
-                    setTimeout(function () {
-                        if (capturedRequests && capturedRequests.length !== 0) {
-                            return;
-                        } else {
-                            var indicator = document.getElementById("website-actions");
-                            indicator.textContent = 'Disabled';
-                            indicator.classList.remove('status-neutral');
-                            indicator.classList.add('status-connected');
-                        }
-                    }, 500);
-                })(window.lintrk);
-                
-                // Set up conversion tracking
-                var conversionLink = document.getElementById("conversion-link");
-                if (conversionLink) {
-                    conversionLink.addEventListener("click", function () {
-                        const identifier = document.getElementById("test-identifier").value.trim();
-                        const trackingData = { conversion_id: 19349169 };
-                        if (identifier) {
-                            trackingData.custom_identifier = identifier;
-                        }
-                        window.lintrk('track', trackingData);
-                    });
-                }
-                
-                updateOutputStatus('LinkedIn Insights Tag loaded successfully');
-            } else {
-                // No PID - show form to input PID
-                showElement("pid-form");
-                
-                // Handle form submission
-                document.getElementById("pid-input-form").addEventListener("submit", function(e) {
-                    e.preventDefault();
-                    const pidInput = this.querySelector('input[name="pid"]').value.trim();
-                    if (pidInput) {
-                        // Add loading state
-                        const submitBtn = this.querySelector('button[type="submit"]');
-                        submitBtn.innerHTML = '<svg class="icon" viewBox="0 0 20 20"><path d="M4 2v20l16-10z"/></svg>Loading...';
-                        submitBtn.disabled = true;
-                        
-                        // Redirect to current page with PID parameter
-                        const currentUrl = new URL(window.location);
-                        currentUrl.searchParams.set('pid', pidInput);
-                        window.location.href = currentUrl.toString();
-                    }
-                });
-            }
-        })();
-    </script>
-
-    <script type="text/javascript">
-        function decodeAndFormat(encodedStr) {
-            try {
-                // Step 1: Base64 decode to binary string
-                const binaryString = atob(encodedStr);
-
-                // Step 2: Convert binary string to Uint8Array
-                const len = binaryString.length;
-                const bytes = new Uint8Array(len);
-                for (let i = 0; i < len; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-
-                // Step 3: Decompress using pako
-                const decompressed = pako.ungzip(bytes, { to: 'string' });
-
-                // Step 4: Parse and format JSON
-                const json = JSON.parse(decompressed);
-                const formatted = JSON.stringify(json, null, 2);
-
-                // Store request data
-                const timestamp = new Date().toLocaleTimeString();
-                requestCount++;
-                
-                const requestData = {
-                    id: requestCount,
-                    timestamp: timestamp,
-                    formatted: formatted,
-                    raw: json
-                };
-                
-                capturedRequests.push(requestData);
-                
-                // Optional: Store in map for fast ID-based lookup
-                requestsById.set(requestData.id, requestData);
-                
-                // Add to sidebar and auto-select
-                addRequestToSidebar(requestData, timestamp);
-
-                var indicator = document.getElementById("website-actions");
-                indicator.textContent = 'Enabled';
-                indicator.classList.remove('status-neutral');
-                indicator.classList.add('status-alert');
-                
-                updateOutputStatus(`Captured Request #${requestCount} at ${timestamp}`);
-                
-            } catch (error) {
-                console.error('Error decoding LinkedIn data:', error);
-                
-                const timestamp = new Date().toLocaleTimeString();
-                requestCount++;
-                
-                const errorData = {
-                    id: requestCount,
-                    timestamp: timestamp,
-                    formatted: `Error decoding data: ${error.message}\n\nRaw data: ${encodedStr}`,
-                    raw: { error: error.message, rawData: encodedStr }
-                };
-                
-                capturedRequests.push(errorData);
-                
-                // Optional: Store in map for fast ID-based lookup
-                requestsById.set(errorData.id, errorData);
-                
-                addRequestToSidebar(errorData, timestamp);
-                
-                updateOutputStatus('Error decoding request data');
-            }
-        }
-        
-        // Intercept fetch requests to LinkedIn
-        const originalFetch = window.fetch;
-        window.fetch = async function (...args) {
-            if (args[0].includes('https://px.ads.linkedin.com/wa')) {
-                updateOutputStatus('Intercepting LinkedIn request...');
-                if (args[1] && args[1].body) {
-                    decodeAndFormat(args[1].body);
-                } else {
-                    document.getElementById('output').textContent = 'LinkedIn request intercepted but no body found.';
-                    updateOutputStatus('Request intercepted (no body)');
-                }
-            }
-            console.log("Intercepted fetch:", args);
-            const response = await originalFetch(...args);
-            return response;
-        };
-    </script>
+    <!-- JavaScript dependencies and modules loaded in optimized order -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js" defer></script>
+    <script src="ui.js" defer></script>
+    <script src="decoder.js" defer></script>
+    <script src="app.js" defer></script>
 
 </body>
 
