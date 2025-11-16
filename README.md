@@ -1,6 +1,6 @@
 # LinkedIn Insight Tag Compliance Issue
 
-Using the [LinkedIn Insight Tag](https://business.linkedin.com/marketing-solutions/insight-tag) introduces a serious compliance risk, since this Third-Party JavaScript solution contains the [Website Action](shttps://www.linkedin.com/help/lms/answer/a1377941) feature that tries to automatically collect data from the host website. The issue is that it may accidentaly collect personal data and a mitigation of such risk is extremely hard (and we also need to consider that most of customers don't even know about this risk).
+Using the [LinkedIn Insight Tag](https://business.linkedin.com/marketing-solutions/insight-tag) introduces a serious compliance risk, since this Third-Party JavaScript solution contains the [Website Actions](https://www.linkedin.com/help/lms/answer/a1377941) feature that tries to automatically collect data from the host website. The issue is that it may accidentaly collect personal data and a mitigation of such risk is extremely hard (and we also need to consider that most of customers don't even know about this risk).
 
 This issue exists as of November 16th, 2025 and I hope LinkedIn will try to fix this as soon as possible.
 
